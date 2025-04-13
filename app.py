@@ -1,10 +1,11 @@
 import streamlit as st
-st.set_page_config(page_title="NYC Taxi Fare Prediction", layout="wide")  # FIRST Streamlit command
+st.set_page_config(page_title="NYC Taxi Fare Prediction", layout="wide")
 
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import plotly.graph_objs as go
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 import joblib
@@ -52,16 +53,19 @@ def predict_fare(hour, passenger_count):
     input_data[idx_pass] = passenger_count
     return model_lr.predict([input_data])[0]
 
-# UI
+# UI - Power BI-like Dashboard
 st.title("🚖 NYC Green Taxi Fare Prediction App")
 
-tab1, tab2, tab3 = st.tabs(["🔢 Predict Fare", "📈 Daily/Weekly/Monthly", "📊 Visual Analysis"])
+tab1, tab2, tab3 = st.tabs(["🔢 Predict Fare", "📈 Trend Analysis", "📊 Visual Analysis"])
 
 # --- Tab 1: Predict Fare ---
 with tab1:
     st.subheader("Enter Trip Details to Predict Fare")
-    hour = st.slider("Pickup Hour", 0, 23, 10)
-    passenger_count = st.number_input("Passenger Count", min_value=1, max_value=6, value=1)
+    col1, col2 = st.columns(2)
+    with col1:
+        hour = st.slider("Pickup Hour", 0, 23, 10)
+    with col2:
+        passenger_count = st.number_input("Passenger Count", min_value=1, max_value=6, value=1)
 
     if st.button("Predict Fare"):
         pred = predict_fare(hour, passenger_count)
@@ -70,7 +74,6 @@ with tab1:
 # --- Tab 2: Trend Analysis ---
 with tab2:
     st.subheader("Fare Trend Analysis")
-
     df['date'] = df['lpep_dropoff_datetime'].dt.date
     df['week'] = df['lpep_dropoff_datetime'].dt.isocalendar().week
     df['month'] = df['lpep_dropoff_datetime'].dt.month_name()
@@ -79,13 +82,19 @@ with tab2:
 
     if option == "Daily":
         daily_avg = df.groupby('date')['total_amount'].mean()
-        st.line_chart(daily_avg)
+        fig = go.Figure([go.Scatter(x=daily_avg.index, y=daily_avg.values, mode='lines', name='Daily Avg Fare')])
+        fig.update_layout(title="Daily Average Fare", xaxis_title="Date", yaxis_title="Fare Amount ($)")
+        st.plotly_chart(fig)
     elif option == "Weekly":
         weekly_avg = df.groupby('week')['total_amount'].mean()
-        st.bar_chart(weekly_avg)
+        fig = go.Figure([go.Bar(x=weekly_avg.index, y=weekly_avg.values, name='Weekly Avg Fare')])
+        fig.update_layout(title="Weekly Average Fare", xaxis_title="Week", yaxis_title="Fare Amount ($)")
+        st.plotly_chart(fig)
     elif option == "Monthly":
         monthly_avg = df.groupby('month')['total_amount'].mean()
-        st.bar_chart(monthly_avg)
+        fig = go.Figure([go.Bar(x=monthly_avg.index, y=monthly_avg.values, name='Monthly Avg Fare')])
+        fig.update_layout(title="Monthly Average Fare", xaxis_title="Month", yaxis_title="Fare Amount ($)")
+        st.plotly_chart(fig)
 
 # --- Tab 3: Visual Analysis ---
 with tab3:
