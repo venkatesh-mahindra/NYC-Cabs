@@ -1,3 +1,4 @@
+updated
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -6,6 +7,7 @@ import seaborn as sns
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.preprocessing import StandardScaler
 
 # Set page configuration
 st.set_page_config(
@@ -37,6 +39,21 @@ st.markdown("""
         border-radius: 5px;
         box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
     }
+    .negative-value {
+        color: red;
+        font-weight: bold;
+    }
+    .positive-value {
+        color: green;
+        font-weight: bold;
+    }
+    .warning-box {
+        background-color: #FFF3CD;
+        padding: 10px;
+        border-radius: 5px;
+        margin: 10px 0;
+        border-left: 5px solid #FFC107;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -65,13 +82,21 @@ def load_data():
         # Handle missing values in numeric columns
         numeric_cols = df.select_dtypes(include=['float64', 'int64']).columns
         if len(numeric_cols) > 0:
-            df[numeric_cols] = df[numeric_cols].fillna(df[numeric_cols].mean())
+            df[numeric_cols] = df[numeric_cols].fillna(df[numeric_cols].median())  # Using median instead of mean
         
         # Filter out extreme values
         if 'trip_duration' in df.columns:
             df = df[(df['trip_duration'] > 0) & (df['trip_duration'] < 180)]  # Trips between 0 and 3 hours
         if 'total_amount' in df.columns:
             df = df[(df['total_amount'] > 0) & (df['total_amount'] < 200)]    # Reasonable fare amounts
+        if 'trip_distance' in df.columns:
+            df = df[(df['trip_distance'] > 0) & (df['trip_distance'] < 50)]    # Reasonable distances
+        
+        # Remove any remaining negative values in fare and distance
+        if 'total_amount' in df.columns:
+            df = df[df['total_amount'] > 0]
+        if 'trip_distance' in df.columns:
+            df = df[df['trip_distance'] > 0]
         
         return df
     except Exception as e:
@@ -458,8 +483,12 @@ if df is not None:
                 X = model_df[features]
                 y = model_df['total_amount']
                 
+                # Scale the features
+                scaler = StandardScaler()
+                X_scaled = scaler.fit_transform(X)
+                
                 # Split data
-                X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+                X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
                 
                 # Train model
                 model = LinearRegression()
@@ -480,10 +509,22 @@ if df is not None:
                 st.subheader("Feature Importance")
                 
                 coef_df = pd.DataFrame({
-                    'Feature': X.columns,
+                    'Feature': features,
                     'Coefficient': model.coef_
                 }).sort_values('Coefficient', ascending=False)
                 
+                # Display feature importance with styling
+                def color_coefficient(val):
+                    color = 'red' if val < 0 else 'green'
+                    return f'color: {color}; font-weight: bold'
+                
+                st.dataframe(
+                    coef_df.style.applymap(color_coefficient, subset=['Coefficient'])\
+                    .format({'Coefficient': '{:.4f}'}),
+                    height=400
+                )
+                
+                # Plot feature importance
                 fig, ax = plt.subplots(figsize=(12, 8))
                 sns.barplot(x='Coefficient', y='Feature', data=coef_df.head(15), ax=ax)
                 ax.set_title('Top 15 Feature Coefficients')
@@ -506,15 +547,15 @@ if df is not None:
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    trip_distance = st.slider("Trip Distance (miles)", 0.1, 30.0, 5.0, 0.1) if 'trip_distance' in features else 0
-                    trip_duration = st.slider("Trip Duration (minutes)", 1, 120, 15, 1) if 'trip_duration' in features else 0
+                    trip_distance = st.slider("Trip Distance (miles)", 0.1, 30.0, 5.0, 0.1) if 'trip_distance' in features else 5.0
+                    trip_duration = st.slider("Trip Duration (minutes)", 1, 120, 15, 1) if 'trip_duration' in features else 15
                     
                     # Only show passenger count slider if it's a feature
                     if 'passenger_count' in features:
                         passenger_count = st.slider("Passenger Count", 1, 6, 1, 1)
                 
                 with col2:
-                    hour = st.slider("Hour of Day", 0, 23, 12, 1) if 'hour' in features else 0
+                    hour = st.slider("Hour of Day", 0, 23, 12, 1) if 'hour' in features else 12
                     weekday = st.selectbox("Day of Week", weekday_order) if any(col.startswith('weekday_') for col in dummy_cols) else None
                     
                     # Only show payment type if it's a feature
@@ -539,17 +580,17 @@ if df is not None:
                     input_data['passenger_count'] = passenger_count
                 
                 # Convert to dataframe
-                input_data = pd.DataFrame(input_data, index=[0])
+                input_df = pd.DataFrame(input_data, index=[0])
                 
                 # Add dummy variables with zeros
                 for col in dummy_cols:
-                    input_data[col] = 0
+                    input_df[col] = 0
                 
                 # Set weekday dummy if available
                 if weekday is not None:
                     weekday_col = f'weekday_{weekday}'
                     if weekday_col in dummy_cols:
-                        input_data[weekday_col] = 1
+                        input_df[weekday_col] = 1
                 
                 # Set payment type dummy if available
                 if any(col.startswith('payment_') for col in dummy_cols) and 'payment_type' in locals():
@@ -560,7 +601,7 @@ if df is not None:
                         if i != 1:  # Assuming 1 is the reference category
                             payment_col = f'payment_{i}'
                             if payment_col in dummy_cols:
-                                input_data[payment_col] = 1 if i == payment_code else 0
+                                input_df[payment_col] = 1 if i == payment_code else 0
                 
                 # Set trip type dummy if available
                 if any(col.startswith('trip_') for col in dummy_cols) and 'trip_type' in locals():
@@ -571,55 +612,69 @@ if df is not None:
                         if i != 1:  # Assuming 1 is the reference category
                             trip_col = f'trip_{i}'
                             if trip_col in dummy_cols:
-                                input_data[trip_col] = 1 if i == trip_code else 0
+                                input_df[trip_col] = 1 if i == trip_code else 0
                 
                 # Make sure input data has all the features used by the model
-                for col in X.columns:
-                    if col not in input_data.columns:
-                        input_data[col] = 0
+                for col in features:
+                    if col not in input_df.columns:
+                        input_df[col] = 0
+                
+                # Scale the input data
+                input_scaled = scaler.transform(input_df[features])
                 
                 # Make prediction
                 try:
-                    prediction = model.predict(input_data[X.columns])[0]
-                    st.markdown(f"<div class='metric-card'><h3>Estimated Fare: ${prediction:.2f}</h3></div>", unsafe_allow_html=True)
+                    prediction = model.predict(input_scaled)[0]
+                    if prediction < 0:
+                        st.markdown(f"""
+                        <div class='warning-box'>
+                            <h3 class='negative-value'>Estimated Fare: ${prediction:.2f}</h3>
+                            <p>Warning: Negative fare predicted. This may indicate:</p>
+                            <ul>
+                                <li>Unusual input values (very short trip with long duration)</li>
+                                <li>Limitations in the model's training data</li>
+                                <li>Need for additional features or model refinement</li>
+                            </ul>
+                            <p>Try adjusting the input values or consider this prediction unreliable.</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"<div class='metric-card positive-value'><h3>Estimated Fare: ${prediction:.2f}</h3></div>", 
+                                  unsafe_allow_html=True)
                 except Exception as e:
                     st.error(f"Error making prediction: {e}")
                 
-                # Daily and weekly predictions
-                st.subheader("Daily and Weekly Fare Predictions")
+                # Model diagnostics
+                st.subheader("Model Diagnostics")
                 
-                # Daily average prediction
-                if 'hour' in df.columns and 'total_amount' in df.columns:
-                    daily_avg = df.groupby('hour')['total_amount'].mean()
-                    
-                    fig, ax = plt.subplots(figsize=(12, 6))
-                    ax.plot(daily_avg.index, daily_avg.values, marker='o', linestyle='-', color='blue')
-                    ax.set_title('Average Fare by Hour of Day')
-                    ax.set_xlabel('Hour of Day')
-                    ax.set_ylabel('Average Fare ($)')
-                    ax.set_xticks(range(0, 24))
-                    ax.grid(True, linestyle='--', alpha=0.7)
-                    st.pyplot(fig)
+                # Check for multicollinearity
+                st.write("**Multicollinearity Check:**")
+                if len(features) > 1:
+                    corr_matrix = model_df[features].corr().abs()
+                    upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
+                    high_corr = [column for column in upper.columns if any(upper[column] > 0.7)]
+                    if high_corr:
+                        st.warning(f"Potential multicollinearity detected between: {', '.join(high_corr)}")
+                        st.write("This can make coefficient interpretation unreliable.")
+                    else:
+                        st.success("No significant multicollinearity detected")
                 
-                # Weekly average prediction
-                if 'weekday' in df.columns and 'total_amount' in df.columns:
-                    weekly_avg = df.groupby('weekday')['total_amount'].mean()
-                    
-                    # Ensure all weekdays are represented
-                    for day in weekday_order:
-                        if day not in weekly_avg.index:
-                            weekly_avg[day] = 0
-                    
-                    # Reindex to ensure correct order
-                    weekly_avg = weekly_avg.reindex(weekday_order)
-                    
-                    fig, ax = plt.subplots(figsize=(12, 6))
-                    ax.bar(weekly_avg.index, weekly_avg.values, color='green')
-                    ax.set_title('Average Fare by Day of Week')
-                    ax.set_xlabel('Day of Week')
-                    ax.set_ylabel('Average Fare ($)')
-                    plt.xticks(rotation=45)
-                    st.pyplot(fig)
+                # Check for heteroscedasticity
+                residuals = y_test - y_pred
+                fig, ax = plt.subplots(figsize=(10, 6))
+                ax.scatter(y_pred, residuals, alpha=0.5)
+                ax.axhline(y=0, color='r', linestyle='--')
+                ax.set_xlabel('Predicted Values')
+                ax.set_ylabel('Residuals')
+                ax.set_title('Residual Plot (Check for Heteroscedasticity)')
+                st.pyplot(fig)
+                
+                st.write("""
+                **Interpretation:**
+                - A good model should have residuals randomly scattered around zero
+                - Patterns in residuals may indicate issues with the model
+                - Negative predictions suggest the model may need more features or better data
+                """)
     
     # Interactive Exploration page
     elif page == "Interactive Exploration":
@@ -740,6 +795,7 @@ if df is not None:
                 ax.set_xlabel(x_var)
                 ax.set_ylabel(y_var)
                 st.pyplot(fig)
+
 else:
     st.error("Failed to load data. Please upload the 'green_tripdata_2023-01.parquet' file.")
     
