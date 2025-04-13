@@ -42,7 +42,7 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_
 model_lr = LinearRegression()
 model_lr.fit(X_train, y_train)
 
-# Prediction function
+# Prediction function (Ensure no negative values)
 def predict_fare(hour, passenger_count):
     input_data = np.zeros(X_train.shape[1])
     hour_col = f'hourofday_{hour}'
@@ -51,7 +51,10 @@ def predict_fare(hour, passenger_count):
         input_data[idx_hour] = 1
     idx_pass = X_train.columns.get_loc('passenger_count')
     input_data[idx_pass] = passenger_count
-    return model_lr.predict([input_data])[0]
+    prediction = model_lr.predict([input_data])[0]
+    
+    # Ensure prediction is non-negative
+    return max(prediction, 0)  # Clamping to 0 if negative
 
 # UI - Power BI-like Dashboard
 st.title("🚖 NYC Green Taxi Fare Prediction App")
