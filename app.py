@@ -404,7 +404,7 @@ if nycgreentaxi is not None:
             'background-color': '#f8f9fa',
             'color': '#424242',
             'border-color': '#e0e0e0'
-        })
+        }))
     
     # Download filtered data with improved button
     csv = filtered_data.to_csv(index=False).encode('utf-8')
