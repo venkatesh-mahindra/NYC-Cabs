@@ -1,4 +1,6 @@
 import streamlit as st
+st.set_page_config(page_title="NYC Taxi Fare Prediction", layout="wide")  # FIRST Streamlit command
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -51,11 +53,11 @@ def predict_fare(hour, passenger_count):
     return model_lr.predict([input_data])[0]
 
 # UI
-st.set_page_config(page_title="NYC Taxi Fare Prediction", layout="wide")
 st.title("🚖 NYC Green Taxi Fare Prediction App")
 
 tab1, tab2, tab3 = st.tabs(["🔢 Predict Fare", "📈 Daily/Weekly/Monthly", "📊 Visual Analysis"])
 
+# --- Tab 1: Predict Fare ---
 with tab1:
     st.subheader("Enter Trip Details to Predict Fare")
     hour = st.slider("Pickup Hour", 0, 23, 10)
@@ -65,6 +67,7 @@ with tab1:
         pred = predict_fare(hour, passenger_count)
         st.success(f"Predicted Total Amount: ${pred:.2f}")
 
+# --- Tab 2: Trend Analysis ---
 with tab2:
     st.subheader("Fare Trend Analysis")
 
@@ -84,6 +87,7 @@ with tab2:
         monthly_avg = df.groupby('month')['total_amount'].mean()
         st.bar_chart(monthly_avg)
 
+# --- Tab 3: Visual Analysis ---
 with tab3:
     st.subheader("Correlations and Distributions")
 
