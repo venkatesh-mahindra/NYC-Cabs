@@ -45,6 +45,15 @@ st.markdown("""
 st.markdown("<h1 class='main-header'>NYC Green Taxi Data Analysis</h1>", unsafe_allow_html=True)
 st.markdown("### Explore and analyze NYC Green Taxi data from January 2023")
 
+# Define weekday order globally
+weekday_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+# Payment type mapping
+payment_mapping = {1: "Credit Card", 2: "Cash", 3: "No Charge", 4: "Dispute", 5: "Unknown", 6: "Voided Trip"}
+
+# Trip type mapping
+trip_mapping = {1: "Street-hail", 2: "Dispatch"}
+
 # Function to load and preprocess data
 @st.cache_data
 def load_data():
@@ -66,6 +75,10 @@ def load_data():
         df['month'] = df['lpep_pickup_datetime'].dt.month
         df['year'] = df['lpep_pickup_datetime'].dt.year
         df['date'] = df['lpep_pickup_datetime'].dt.date
+        
+        # Add payment_type_desc and trip_type_desc
+        df['payment_type_desc'] = df['payment_type'].map(payment_mapping).fillna('Unknown')
+        df['trip_type_desc'] = df['trip_type'].map(trip_mapping).fillna('Unknown')
         
         # Handle missing values
         numeric_cols = df.select_dtypes(include=['float64', 'int64']).columns
@@ -132,8 +145,6 @@ if df is not None:
         
         # Payment type distribution
         st.subheader("Payment Type Distribution")
-        payment_mapping = {1: "Credit Card", 2: "Cash", 3: "No Charge", 4: "Dispute", 5: "Unknown", 6: "Voided Trip"}
-        df['payment_type_desc'] = df['payment_type'].map(payment_mapping)
         
         fig, ax = plt.subplots(figsize=(10, 6))
         payment_counts = df['payment_type_desc'].value_counts()
@@ -143,8 +154,6 @@ if df is not None:
         
         # Trip type distribution
         st.subheader("Trip Type Distribution")
-        trip_mapping = {1: "Street-hail", 2: "Dispatch"}
-        df['trip_type_desc'] = df['trip_type'].map(trip_mapping)
         
         fig, ax = plt.subplots(figsize=(10, 6))
         trip_counts = df['trip_type_desc'].value_counts()
@@ -184,7 +193,6 @@ if df is not None:
         st.subheader("Weekday Analysis")
         
         # Order weekdays properly
-        weekday_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
         weekday_trips = df['weekday'].value_counts().reindex(weekday_order)
         weekday_avg_fare = df.groupby('weekday')['total_amount'].mean().reindex(weekday_order)
         
@@ -255,54 +263,66 @@ if df is not None:
         fare_components = ['fare_amount', 'tip_amount', 'tolls_amount', 'mta_tax', 
                           'improvement_surcharge', 'congestion_surcharge', 'extra']
         
-        avg_components = df[fare_components].mean().sort_values(ascending=False)
+        # Check if all components exist in the dataframe
+        available_components = [col for col in fare_components if col in df.columns]
         
-        fig, ax = plt.subplots(figsize=(10, 6))
-        ax.bar(avg_components.index, avg_components.values, color='lightblue')
-        ax.set_title('Average Fare Components')
-        ax.set_ylabel('Amount ($)')
-        plt.xticks(rotation=45)
-        st.pyplot(fig)
+        if available_components:
+            avg_components = df[available_components].mean().sort_values(ascending=False)
+            
+            fig, ax = plt.subplots(figsize=(10, 6))
+            ax.bar(avg_components.index, avg_components.values, color='lightblue')
+            ax.set_title('Average Fare Components')
+            ax.set_ylabel('Amount ($)')
+            plt.xticks(rotation=45)
+            st.pyplot(fig)
+        else:
+            st.warning("Fare component columns not found in the dataset.")
         
         # Tip analysis
         st.subheader("Tip Analysis")
         
         # Calculate tip percentage
-        df['tip_percentage'] = (df['tip_amount'] / df['fare_amount']) * 100
-        df['tip_percentage'] = df['tip_percentage'].replace([np.inf, -np.inf], np.nan).fillna(0)
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # Tip percentage distribution
-            fig, ax = plt.subplots(figsize=(10, 6))
-            sns.histplot(df[df['tip_percentage'] > 0]['tip_percentage'], bins=20, kde=True, ax=ax)
-            ax.set_title('Tip Percentage Distribution (Excluding Zero Tips)')
-            ax.set_xlabel('Tip Percentage (%)')
-            st.pyplot(fig)
+        if 'tip_amount' in df.columns and 'fare_amount' in df.columns:
+            df['tip_percentage'] = (df['tip_amount'] / df['fare_amount']) * 100
+            df['tip_percentage'] = df['tip_percentage'].replace([np.inf, -np.inf], np.nan).fillna(0)
             
-        with col2:
-            # Average tip by weekday
-            avg_tip_weekday = df.groupby('weekday')['tip_percentage'].mean().reindex(weekday_order)
+            col1, col2 = st.columns(2)
             
-            fig, ax = plt.subplots(figsize=(10, 6))
-            ax.bar(avg_tip_weekday.index, avg_tip_weekday.values, color='salmon')
-            ax.set_title('Average Tip Percentage by Weekday')
-            ax.set_ylabel('Tip Percentage (%)')
-            plt.xticks(rotation=45)
-            st.pyplot(fig)
+            with col1:
+                # Tip percentage distribution
+                fig, ax = plt.subplots(figsize=(10, 6))
+                sns.histplot(df[df['tip_percentage'] > 0]['tip_percentage'], bins=20, kde=True, ax=ax)
+                ax.set_title('Tip Percentage Distribution (Excluding Zero Tips)')
+                ax.set_xlabel('Tip Percentage (%)')
+                st.pyplot(fig)
+                
+            with col2:
+                # Average tip by weekday
+                avg_tip_weekday = df.groupby('weekday')['tip_percentage'].mean().reindex(weekday_order)
+                
+                fig, ax = plt.subplots(figsize=(10, 6))
+                ax.bar(avg_tip_weekday.index, avg_tip_weekday.values, color='salmon')
+                ax.set_title('Average Tip Percentage by Weekday')
+                ax.set_ylabel('Tip Percentage (%)')
+                plt.xticks(rotation=45)
+                st.pyplot(fig)
+        else:
+            st.warning("Tip amount or fare amount columns not found in the dataset.")
         
         # Fare by payment type
         st.subheader("Fare Analysis by Payment Type")
         
-        avg_fare_payment = df.groupby('payment_type_desc')['total_amount'].mean().sort_values(ascending=False)
-        
-        fig, ax = plt.subplots(figsize=(10, 6))
-        ax.bar(avg_fare_payment.index, avg_fare_payment.values, color='lightgreen')
-        ax.set_title('Average Fare by Payment Type')
-        ax.set_ylabel('Average Fare ($)')
-        plt.xticks(rotation=45)
-        st.pyplot(fig)
+        if 'payment_type_desc' in df.columns:
+            avg_fare_payment = df.groupby('payment_type_desc')['total_amount'].mean().sort_values(ascending=False)
+            
+            fig, ax = plt.subplots(figsize=(10, 6))
+            ax.bar(avg_fare_payment.index, avg_fare_payment.values, color='lightgreen')
+            ax.set_title('Average Fare by Payment Type')
+            ax.set_ylabel('Average Fare ($)')
+            plt.xticks(rotation=45)
+            st.pyplot(fig)
+        else:
+            st.warning("Payment type description column not found in the dataset.")
     
     # Prediction Model page
     elif page == "Prediction Model":
@@ -316,129 +336,142 @@ if df is not None:
         # Prepare data for modeling
         st.subheader("Model Training")
         
-        # One-hot encode categorical variables
-        model_df = df.copy()
-        cat_cols = ['weekday', 'payment_type_desc', 'trip_type_desc']
-        model_df = pd.get_dummies(model_df, columns=cat_cols, drop_first=True)
+        # Check if required columns exist
+        required_cols = ['weekday', 'payment_type_desc', 'trip_type_desc', 'trip_distance', 
+                         'trip_duration', 'passenger_count', 'hour', 'total_amount']
+        missing_cols = [col for col in required_cols if col not in df.columns]
         
-        # Select features for the model
-        features = ['trip_distance', 'trip_duration', 'passenger_count', 'hour'] + \
-                  [col for col in model_df.columns if col.startswith(('weekday_', 'payment_type_desc_', 'trip_type_desc_'))]
-        
-        X = model_df[features]
-        y = model_df['total_amount']
-        
-        # Split data
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-        
-        # Train model
-        model = LinearRegression()
-        model.fit(X_train, y_train)
-        
-        # Model evaluation
-        y_pred = model.predict(X_test)
-        mse = mean_squared_error(y_test, y_pred)
-        r2 = r2_score(y_test, y_pred)
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            st.metric("Mean Squared Error", f"{mse:.4f}")
-        with col2:
-            st.metric("R² Score", f"{r2:.4f}")
-        
-        # Feature importance
-        st.subheader("Feature Importance")
-        
-        coef_df = pd.DataFrame({
-            'Feature': X.columns,
-            'Coefficient': model.coef_
-        }).sort_values('Coefficient', ascending=False)
-        
-        fig, ax = plt.subplots(figsize=(12, 8))
-        sns.barplot(x='Coefficient', y='Feature', data=coef_df.head(15), ax=ax)
-        ax.set_title('Top 15 Feature Coefficients')
-        st.pyplot(fig)
-        
-        # Prediction vs Actual
-        st.subheader("Prediction vs Actual")
-        
-        fig, ax = plt.subplots(figsize=(10, 6))
-        ax.scatter(y_test, y_pred, alpha=0.5)
-        ax.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--')
-        ax.set_xlabel('Actual Fare ($)')
-        ax.set_ylabel('Predicted Fare ($)')
-        ax.set_title('Actual vs Predicted Fare Amounts')
-        st.pyplot(fig)
-        
-        # Interactive prediction
-        st.subheader("Predict Your Fare")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            trip_distance = st.slider("Trip Distance (miles)", 0.1, 30.0, 5.0, 0.1)
-            trip_duration = st.slider("Trip Duration (minutes)", 1, 120, 15, 1)
-            passenger_count = st.slider("Passenger Count", 1, 6, 1, 1)
-        
-        with col2:
-            hour = st.slider("Hour of Day", 0, 23, 12, 1)
-            weekday = st.selectbox("Day of Week", weekday_order)
-            payment_type = st.selectbox("Payment Type", ["Credit Card", "Cash"])
-            trip_type = st.selectbox("Trip Type", ["Street-hail", "Dispatch"])
-        
-        # Create input data for prediction
-        input_data = pd.DataFrame({
-            'trip_distance': [trip_distance],
-            'trip_duration': [trip_duration],
-            'passenger_count': [passenger_count],
-            'hour': [hour]
-        })
-        
-        # Add one-hot encoded columns with zeros
-        for col in X.columns:
-            if col not in input_data.columns:
-                input_data[col] = 0
-        
-        # Set the appropriate one-hot encoded values
-        if weekday != 'Monday':  # Assuming 'Monday' was the reference category
-            input_data[f'weekday_{weekday}'] = 1
+        if missing_cols:
+            st.warning(f"Missing required columns for modeling: {', '.join(missing_cols)}")
+        else:
+            # One-hot encode categorical variables
+            model_df = df.copy()
+            cat_cols = ['weekday', 'payment_type_desc', 'trip_type_desc']
+            model_df = pd.get_dummies(model_df, columns=cat_cols, drop_first=True)
             
-        if payment_type == "Credit Card":
-            input_data['payment_type_desc_Credit Card'] = 1
+            # Select features for the model
+            feature_prefixes = ['weekday_', 'payment_type_desc_', 'trip_type_desc_']
+            dummy_cols = [col for col in model_df.columns if any(col.startswith(prefix) for prefix in feature_prefixes)]
             
-        if trip_type == "Dispatch":
-            input_data['trip_type_desc_Dispatch'] = 1
-        
-        # Make prediction
-        prediction = model.predict(input_data[X.columns])[0]
-        
-        st.markdown(f"<div class='metric-card'><h3>Estimated Fare: ${prediction:.2f}</h3></div>", unsafe_allow_html=True)
-        
-        # Daily and weekly predictions
-        st.subheader("Daily and Weekly Fare Predictions")
-        
-        # Daily average prediction
-        daily_avg = df.groupby('hour')['total_amount'].mean()
-        
-        fig, ax = plt.subplots(figsize=(12, 6))
-        ax.plot(daily_avg.index, daily_avg.values, marker='o', linestyle='-', color='blue')
-        ax.set_title('Average Fare by Hour of Day')
-        ax.set_xlabel('Hour of Day')
-        ax.set_ylabel('Average Fare ($)')
-        ax.set_xticks(range(0, 24))
-        ax.grid(True, linestyle='--', alpha=0.7)
-        st.pyplot(fig)
-        
-        # Weekly average prediction
-        weekly_avg = df.groupby('weekday')['total_amount'].mean().reindex(weekday_order)
-        
-        fig, ax = plt.subplots(figsize=(12, 6))
-        ax.bar(weekly_avg.index, weekly_avg.values, color='green')
-        ax.set_title('Average Fare by Day of Week')
-        ax.set_xlabel('Day of Week')
-        ax.set_ylabel('Average Fare ($)')
-        plt.xticks(rotation=45)
-        st.pyplot(fig)
+            features = ['trip_distance', 'trip_duration', 'passenger_count', 'hour'] + dummy_cols
+            
+            # Make sure all features exist in the dataframe
+            available_features = [col for col in features if col in model_df.columns]
+            
+            X = model_df[available_features]
+            y = model_df['total_amount']
+            
+            # Split data
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+            
+            # Train model
+            model = LinearRegression()
+            model.fit(X_train, y_train)
+            
+            # Model evaluation
+            y_pred = model.predict(X_test)
+            mse = mean_squared_error(y_test, y_pred)
+            r2 = r2_score(y_test, y_pred)
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Mean Squared Error", f"{mse:.4f}")
+            with col2:
+                st.metric("R² Score", f"{r2:.4f}")
+            
+            # Feature importance
+            st.subheader("Feature Importance")
+            
+            coef_df = pd.DataFrame({
+                'Feature': X.columns,
+                'Coefficient': model.coef_
+            }).sort_values('Coefficient', ascending=False)
+            
+            fig, ax = plt.subplots(figsize=(12, 8))
+            sns.barplot(x='Coefficient', y='Feature', data=coef_df.head(15), ax=ax)
+            ax.set_title('Top 15 Feature Coefficients')
+            st.pyplot(fig)
+            
+            # Prediction vs Actual
+            st.subheader("Prediction vs Actual")
+            
+            fig, ax = plt.subplots(figsize=(10, 6))
+            ax.scatter(y_test, y_pred, alpha=0.5)
+            ax.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--')
+            ax.set_xlabel('Actual Fare ($)')
+            ax.set_ylabel('Predicted Fare ($)')
+            ax.set_title('Actual vs Predicted Fare Amounts')
+            st.pyplot(fig)
+            
+            # Interactive prediction
+            st.subheader("Predict Your Fare")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                trip_distance = st.slider("Trip Distance (miles)", 0.1, 30.0, 5.0, 0.1)
+                trip_duration = st.slider("Trip Duration (minutes)", 1, 120, 15, 1)
+                passenger_count = st.slider("Passenger Count", 1, 6, 1, 1)
+            
+            with col2:
+                hour = st.slider("Hour of Day", 0, 23, 12, 1)
+                weekday = st.selectbox("Day of Week", weekday_order)
+                payment_type = st.selectbox("Payment Type", ["Credit Card", "Cash"])
+                trip_type = st.selectbox("Trip Type", ["Street-hail", "Dispatch"])
+            
+            # Create input data for prediction
+            input_data = pd.DataFrame({
+                'trip_distance': [trip_distance],
+                'trip_duration': [trip_duration],
+                'passenger_count': [passenger_count],
+                'hour': [hour]
+            })
+            
+            # Add one-hot encoded columns with zeros
+            for col in X.columns:
+                if col not in input_data.columns:
+                    input_data[col] = 0
+            
+            # Set the appropriate one-hot encoded values
+            if f'weekday_{weekday}' in input_data.columns:
+                input_data[f'weekday_{weekday}'] = 1
+                
+            if f'payment_type_desc_{payment_type}' in input_data.columns:
+                input_data[f'payment_type_desc_{payment_type}'] = 1
+                
+            if f'trip_type_desc_{trip_type}' in input_data.columns:
+                input_data[f'trip_type_desc_{trip_type}'] = 1
+            
+            # Make prediction
+            prediction = model.predict(input_data[X.columns])[0]
+            
+            st.markdown(f"<div class='metric-card'><h3>Estimated Fare: ${prediction:.2f}</h3></div>", unsafe_allow_html=True)
+            
+            # Daily and weekly predictions
+            st.subheader("Daily and Weekly Fare Predictions")
+            
+            # Daily average prediction
+            daily_avg = df.groupby('hour')['total_amount'].mean()
+            
+            fig, ax = plt.subplots(figsize=(12, 6))
+            ax.plot(daily_avg.index, daily_avg.values, marker='o', linestyle='-', color='blue')
+            ax.set_title('Average Fare by Hour of Day')
+            ax.set_xlabel('Hour of Day')
+            ax.set_ylabel('Average Fare ($)')
+            ax.set_xticks(range(0, 24))
+            ax.grid(True, linestyle='--', alpha=0.7)
+            st.pyplot(fig)
+            
+            # Weekly average prediction
+            weekly_avg = df.groupby('weekday')['total_amount'].mean().reindex(weekday_order)
+            
+            fig, ax = plt.subplots(figsize=(12, 6))
+            ax.bar(weekly_avg.index, weekly_avg.values, color='green')
+            ax.set_title('Average Fare by Day of Week')
+            ax.set_xlabel('Day of Week')
+            ax.set_ylabel('Average Fare ($)')
+            plt.xticks(rotation=45)
+            st.pyplot(fig)
     
     # Interactive Exploration page
     elif page == "Interactive Exploration":
@@ -482,7 +515,7 @@ if df is not None:
         # Additional filtering options
         st.subheader("Filter Data")
         
-        col1, col2, col3 = st.columns(3)
+        col1, col2 = st.columns(2)
         
         with col1:
             min_distance = st.slider("Minimum Trip Distance", 0.0, df['trip_distance'].max(), 0.0, 0.5)
@@ -490,13 +523,19 @@ if df is not None:
         with col2:
             max_fare = st.slider("Maximum Fare Amount", 0.0, 200.0, 100.0, 5.0)
         
-        with col3:
-            payment_filter = st.multiselect("Payment Types", df['payment_type_desc'].unique().tolist(), df['payment_type_desc'].unique().tolist())
-        
-        # Apply filters
-        filtered_df = df[(df['trip_distance'] >= min_distance) & 
-                         (df['total_amount'] <= max_fare) &
-                         (df['payment_type_desc'].isin(payment_filter))]
+        # Check if payment_type_desc exists
+        if 'payment_type_desc' in df.columns:
+            payment_options = df['payment_type_desc'].unique().tolist()
+            payment_filter = st.multiselect("Payment Types", payment_options, payment_options)
+            
+            # Apply filters
+            filtered_df = df[(df['trip_distance'] >= min_distance) & 
+                            (df['total_amount'] <= max_fare) &
+                            (df['payment_type_desc'].isin(payment_filter))]
+        else:
+            # Apply filters without payment type
+            filtered_df = df[(df['trip_distance'] >= min_distance) & 
+                            (df['total_amount'] <= max_fare)]
         
         st.write(f"Filtered data contains {len(filtered_df):,} trips")
         
