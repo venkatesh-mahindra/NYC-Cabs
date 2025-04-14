@@ -18,7 +18,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom styling with improved colors and modern look
+# Custom styling with Streamlit orange and black theme
 st.markdown("""
 <style>
     .main {
@@ -33,11 +33,11 @@ st.markdown("""
         box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     }
     .highlight {
-        background-color: #f0f7ff;
+        background-color: #fff8f0;
         padding: 15px;
         border-radius: 8px;
         margin: 15px 0;
-        border-left: 4px solid #1e88e5;
+        border-left: 4px solid #ff4b4b;
     }
     .metric-card {
         background-color: white;
@@ -51,16 +51,27 @@ st.markdown("""
         transform: translateY(-5px);
     }
     .title-text {
-        color: #1e88e5;
+        color: #ff4b4b;
         font-weight: 700;
     }
     .viz-title {
-        color: #424242;
+        color: #262730;
         font-weight: 600;
         margin-bottom: 15px;
     }
     .tabs .stTab {
         border-radius: 8px 8px 0 0 !important;
+    }
+    .payment-nav {
+        background-color: #ff4b4b;
+        color: white;
+        padding: 10px 15px;
+        border-radius: 5px;
+        font-weight: 600;
+        margin-bottom: 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
     html, body, [class*="css"] {
@@ -115,7 +126,7 @@ if nycgreentaxi is not None:
     """, unsafe_allow_html=True)
     
     # Sidebar filters with improved styling
-    st.sidebar.markdown('<div style="font-size:18px; font-weight:600; color:#1e88e5; margin-bottom:20px;">Filters</div>', unsafe_allow_html=True)
+    st.sidebar.markdown('<div style="font-size:18px; font-weight:600; color:#ff4b4b; margin-bottom:20px;">Filters</div>', unsafe_allow_html=True)
     
     # Weekday filter
     weekdays = ['All'] + sorted(nycgreentaxi['weekday'].unique().tolist())
@@ -138,6 +149,55 @@ if nycgreentaxi is not None:
     if selected_payment != 'All':
         filtered_data = filtered_data[filtered_data['payment_type'] == selected_payment]
     
+    # Payment type navigation bar
+    payment_type_counts = nycgreentaxi['payment_type'].value_counts()
+    payment_type_mapping = {
+        1: "Credit Card",
+        2: "Cash",
+        3: "No Charge",
+        4: "Dispute",
+        5: "Unknown",
+        6: "Voided Trip"
+    }
+    
+    # Create payment type navigation bar
+    st.markdown('<div class="payment-nav">', unsafe_allow_html=True)
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.markdown(f"""
+        <div style="text-align: center;">
+            <div style="font-size: 14px;">Credit Card</div>
+            <div style="font-size: 20px; font-weight: 700;">{payment_type_counts.get(1, 0):,}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown(f"""
+        <div style="text-align: center;">
+            <div style="font-size: 14px;">Cash</div>
+            <div style="font-size: 20px; font-weight: 700;">{payment_type_counts.get(2, 0):,}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col3:
+        st.markdown(f"""
+        <div style="text-align: center;">
+            <div style="font-size: 14px;">No Charge</div>
+            <div style="font-size: 20px; font-weight: 700;">{payment_type_counts.get(3, 0):,}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col4:
+        st.markdown(f"""
+        <div style="text-align: center;">
+            <div style="font-size: 14px;">Other</div>
+            <div style="font-size: 20px; font-weight: 700;">{payment_type_counts.get(4, 0) + payment_type_counts.get(5, 0) + payment_type_counts.get(6, 0):,}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+    
     # Key metrics with improved cards
     st.markdown('<div class="viz-title">📊 Key Performance Indicators</div>', unsafe_allow_html=True)
     col1, col2, col3, col4 = st.columns(4)
@@ -146,7 +206,7 @@ if nycgreentaxi is not None:
         st.markdown("""
         <div class="metric-card">
             <div style="font-size:14px; color:#616161;">Total Trips</div>
-            <div style="font-size:28px; font-weight:700; color:#1e88e5;">{:,}</div>
+            <div style="font-size:28px; font-weight:700; color:#ff4b4b;">{:,}</div>
         </div>""".format(len(filtered_data)), unsafe_allow_html=True)
     
     with col2:
@@ -154,7 +214,7 @@ if nycgreentaxi is not None:
         st.markdown("""
         <div class="metric-card">
             <div style="font-size:14px; color:#616161;">Avg. Trip Duration</div>
-            <div style="font-size:28px; font-weight:700; color:#ff6d00;">{:.1f} min</div>
+            <div style="font-size:28px; font-weight:700; color:#ff9d00;">{:.1f} min</div>
         </div>""".format(avg_duration), unsafe_allow_html=True)
     
     with col3:
@@ -162,7 +222,7 @@ if nycgreentaxi is not None:
         st.markdown("""
         <div class="metric-card">
             <div style="font-size:14px; color:#616161;">Avg. Distance</div>
-            <div style="font-size:28px; font-weight:700; color:#43a047;">{:.1f} miles</div>
+            <div style="font-size:28px; font-weight:700; color:#ff4b4b;">{:.1f} miles</div>
         </div>""".format(avg_distance), unsafe_allow_html=True)
     
     with col4:
@@ -170,7 +230,7 @@ if nycgreentaxi is not None:
         st.markdown("""
         <div class="metric-card">
             <div style="font-size:14px; color:#616161;">Avg. Total Amount</div>
-            <div style="font-size:28px; font-weight:700; color:#d81b60;">${:.2f}</div>
+            <div style="font-size:28px; font-weight:700; color:#ff9d00;">${:.2f}</div>
         </div>""".format(avg_total), unsafe_allow_html=True)
     
     # Visualization section with modern styling
@@ -198,7 +258,7 @@ if nycgreentaxi is not None:
             
             # Modern bar chart with improved styling
             bars = ax.bar(weekday_counts.index, weekday_counts.values, 
-                         color=['#1e88e5', '#2196f3', '#64b5f6', '#90caf9', '#bbdefb', '#e3f2fd', '#f5f5f5'],
+                         color=['#ff4b4b', '#ff5c5c', '#ff6e6e', '#ff7f7f', '#ff9191', '#ffa2a2', '#ffb4b4'],
                          edgecolor='white', linewidth=0.7)
             
             # Add value labels on bars
@@ -225,7 +285,7 @@ if nycgreentaxi is not None:
             # Modern line chart with markers
             ax.plot(avg_amount.index, avg_amount.values, 
                     marker='o', markersize=8, 
-                    color='#ff6d00', linewidth=2.5, 
+                    color='#ff9d00', linewidth=2.5, 
                     markerfacecolor='white', markeredgewidth=2)
             
             # Add value labels
@@ -251,10 +311,13 @@ if nycgreentaxi is not None:
             fig, ax = plt.subplots(figsize=(8, 8))
             payment_counts = filtered_data['payment_type'].value_counts()
             
+            # Map payment types to readable labels
+            payment_labels = [payment_type_mapping.get(i, f"Type {i}") for i in payment_counts.index]
+            
             # Modern donut chart
-            colors = ['#1e88e5', '#ff6d00', '#43a047', '#d81b60']
+            colors = ['#ff4b4b', '#ff9d00', '#ffce00', '#262730']
             wedges, texts, autotexts = ax.pie(payment_counts, 
-                                             labels=payment_counts.index,
+                                             labels=payment_labels,
                                              autopct='%1.1f%%',
                                              startangle=90,
                                              colors=colors,
@@ -279,10 +342,14 @@ if nycgreentaxi is not None:
                 fig, ax = plt.subplots(figsize=(8, 8))
                 trip_type_counts = filtered_data['trip_type'].value_counts()
                 
+                # Map trip types to readable labels
+                trip_type_mapping = {1: "Street-hail", 2: "Dispatch"}
+                trip_labels = [trip_type_mapping.get(i, f"Type {i}") for i in trip_type_counts.index]
+                
                 # Modern donut chart
-                colors = ['#1e88e5', '#ff6d00']
+                colors = ['#ff4b4b', '#ff9d00']
                 wedges, texts, autotexts = ax.pie(trip_type_counts, 
-                                                 labels=trip_type_counts.index,
+                                                 labels=trip_labels,
                                                  autopct='%1.1f%%',
                                                  startangle=90,
                                                  colors=colors,
@@ -312,9 +379,9 @@ if nycgreentaxi is not None:
         
         # Modern area chart
         ax.fill_between(hourly_counts.index, hourly_counts.values, 
-                        color='#1e88e5', alpha=0.4)
+                        color='#ff4b4b', alpha=0.4)
         ax.plot(hourly_counts.index, hourly_counts.values, 
-                color='#1e88e5', marker='o', linewidth=2)
+                color='#ff4b4b', marker='o', linewidth=2)
         
         ax.set_title('Number of Trips by Hour of Day', fontsize=14, pad=20)
         ax.set_xlabel('Hour of Day', fontsize=12)
@@ -333,7 +400,8 @@ if nycgreentaxi is not None:
         segments = np.concatenate([points[:-1], points[1:]], axis=1)
         
         from matplotlib.collections import LineCollection
-        lc = LineCollection(segments, cmap='viridis', linewidth=3)
+        norm = plt.Normalize(hourly_duration.values.min(), hourly_duration.values.max())
+        lc = LineCollection(segments, cmap='Oranges', linewidth=3, norm=norm)
         lc.set_array(hourly_duration.values)
         ax.add_collection(lc)
         
@@ -347,6 +415,7 @@ if nycgreentaxi is not None:
         ax.grid(axis='y', linestyle='--', alpha=0.7)
         ax.set_xticks(range(0, 24))
         ax.set_xlim(0, 23)
+        ax.set_ylim(0, hourly_duration.max() * 1.1)
         sns.despine()
         st.pyplot(fig)
     
@@ -361,7 +430,7 @@ if nycgreentaxi is not None:
         hb = ax.hexbin(x=sample_data['trip_distance'], 
                        y=sample_data['trip_duration'], 
                        gridsize=30, 
-                       cmap='viridis', 
+                       cmap='Oranges', 
                        mincnt=1,
                        edgecolors='none')
         
@@ -380,15 +449,15 @@ if nycgreentaxi is not None:
         corr = filtered_data['trip_distance'].corr(filtered_data['trip_duration'])
         st.markdown(f"""
         <div class="highlight">
-            <h4 style="color:#1e88e5; margin-top:0;">Correlation Analysis</h4>
+            <h4 style="color:#ff4b4b; margin-top:0;">Correlation Analysis</h4>
             <div style="display:flex; align-items:center; margin-bottom:10px;">
-                <div style="font-size:24px; font-weight:700; color:#1e88e5; margin-right:15px;">{corr:.2f}</div>
+                <div style="font-size:24px; font-weight:700; color:#ff4b4b; margin-right:15px;">{corr:.2f}</div>
                 <div style="font-size:14px; color:#616161;">
                     The correlation between trip distance and duration is <strong>{'strong' if abs(corr) > 0.7 else 'moderate' if abs(corr) > 0.3 else 'weak'}</strong>
                     and <strong>{'positive' if corr > 0 else 'negative'}</strong>.
                 </div>
             </div>
-            <div style="background:linear-gradient(90deg, #d81b60 0%, #f8bbd0 50%, #1e88e5 100%); height:8px; border-radius:4px; margin-top:10px;">
+            <div style="background:linear-gradient(90deg, #262730 0%, #ff9d00 50%, #ff4b4b 100%); height:8px; border-radius:4px; margin-top:10px;">
                 <div style="width:{50 + corr*50}%; height:100%; background-color:transparent;"></div>
             </div>
         </div>
@@ -417,18 +486,18 @@ if nycgreentaxi is not None:
         help="Download the currently filtered data as a CSV file"
     )
     
-    # About section with improved layout - MOVED TO MAIN LEVEL
+    # About section with improved layout - MOVED TO MAIN LEVEL ONLY
     st.markdown("---")
     st.markdown('<div class="viz-title">ℹ️ About This Dashboard</div>', unsafe_allow_html=True)
     st.markdown("""
-    <div style="background-color:#f5f5f5; padding:20px; border-radius:8px;">
+    <div style="background-color:#fff8f0; padding:20px; border-radius:8px; border-left:4px solid #ff4b4b;">
         <p style="font-size:15px; line-height:1.6; color:#424242;">
         This dashboard analyzes New York City Green Taxi trip records for <strong>January 2023</strong>. 
         The data includes information about trip durations, distances, payment methods, 
         and other relevant metrics that help understand taxi usage patterns in NYC.
         </p>
         
-        <h4 style="color:#1e88e5; margin-top:20px;">Key Features</h4>
+        <h4 style="color:#ff4b4b; margin-top:20px;">Key Features</h4>
         <ul style="font-size:15px; color:#424242;">
             <li>Interactive filters to explore different segments of the data</li>
             <li>Modern, responsive visualizations with improved styling</li>
