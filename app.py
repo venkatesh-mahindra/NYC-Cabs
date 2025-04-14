@@ -486,33 +486,6 @@ if nycgreentaxi is not None:
         help="Download the currently filtered data as a CSV file"
     )
     
-    # About section with improved layout - MOVED TO MAIN LEVEL ONLY
-    st.markdown("---")
-    st.markdown('<div class="viz-title">ℹ️ About This Dashboard</div>', unsafe_allow_html=True)
-    st.markdown("""
-    <div style="background-color:#fff8f0; padding:20px; border-radius:8px; border-left:4px solid #ff4b4b;">
-        <p style="font-size:15px; line-height:1.6; color:#424242;">
-        This dashboard analyzes New York City Green Taxi trip records for <strong>January 2023</strong>. 
-        The data includes information about trip durations, distances, payment methods, 
-        and other relevant metrics that help understand taxi usage patterns in NYC.
-        </p>
-        
-        <h4 style="color:#ff4b4b; margin-top:20px;">Key Features</h4>
-        <ul style="font-size:15px; color:#424242;">
-            <li>Interactive filters to explore different segments of the data</li>
-            <li>Modern, responsive visualizations with improved styling</li>
-            <li>Hourly and weekly pattern analysis</li>
-            <li>Correlation analysis between trip distance and duration</li>
-            <li>Ability to download filtered data for further analysis</li>
-        </ul>
-        
-        <div style="margin-top:20px; font-size:14px; color:#757575;">
-            <strong>Data Source:</strong> NYC Green Taxi Trip Records (January 2023)<br>
-            <strong>Note:</strong> This is a sample dashboard for demonstration purposes.
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    
     # Add some space at the bottom
     st.markdown("<br><br>", unsafe_allow_html=True)
 else:
