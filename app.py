@@ -492,4 +492,4 @@ else:
     st.error("Failed to load data. Please check the data file and try again.")
 # Footer
 st.markdown("---")
-st.markdown("👨‍💻 Created by Abhiram Reddy")
+st.markdown("👨‍💻 Created by Venkatesh Mahindra")
