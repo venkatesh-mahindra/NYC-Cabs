@@ -490,3 +490,6 @@ if nycgreentaxi is not None:
     st.markdown("<br><br>", unsafe_allow_html=True)
 else:
     st.error("Failed to load data. Please check the data file and try again.")
+# Footer
+st.markdown("---")
+st.markdown("👨‍💻 Created by Abhiram Reddy")
